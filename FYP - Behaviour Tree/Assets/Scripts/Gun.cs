@@ -2,7 +2,7 @@
 
 public class Gun : MonoBehaviour
 {
-    public float damage = 10f;
+    public float damage = -10f;
     public float range = 100f;
 
     public Camera fpsCam;
@@ -26,10 +26,10 @@ public class Gun : MonoBehaviour
         {
         	Debug.Log(hit.transform.name);
 
-            Target target = hit.transform.GetComponent<Target>();
+            HealthManager target = hit.transform.GetComponent<HealthManager>();
             if (target != null)
             {
-                target.TakeDamage(damage);
+                target.ChangeHealth(damage);
             }
         }
 
