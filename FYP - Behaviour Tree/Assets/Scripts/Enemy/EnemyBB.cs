@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class EnemyBB : Blackboard
 {
+    public Vector3 moveToLocation;
+    
     // Start is called before the first frame update
     void Start()
     {

@@ -827,9 +827,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1114701637}
   - component: {fileID: 1114701636}
+  - component: {fileID: 1114701638}
   - component: {fileID: 1114701640}
   - component: {fileID: 1114701639}
-  - component: {fileID: 1114701638}
   m_Layer: 0
   m_Name: AI Enemy
   m_TagString: Untagged
@@ -881,6 +881,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b358ece7243c01449e520106dd5f4a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  moveSpeed: 5
+  dir: {x: 0, y: 0, z: 0}
+  isMoving: 0
+  rotationDamping: 8
 --- !u!114 &1114701639
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -906,6 +910,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50dbed49ad85d5f40b7c678617fffc2e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  moveToLocation: {x: 0, y: 0, z: 0}
 --- !u!1 &1458826173
 GameObject:
   m_ObjectHideFlags: 0
