@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 [RequireComponent(typeof(EnemyBB))]
 [RequireComponent(typeof(HealthManager))]
@@ -10,6 +11,9 @@ public class EnemyAI : MonoBehaviour
 
     private EnemyBB bb;
     private BTNode BTRootNode;
+    public NavMeshAgent agent;
+
+    private Material material;
 
     [SerializeField]
     private float moveSpeed = 5f;
@@ -32,6 +36,11 @@ public class EnemyAI : MonoBehaviour
 
         // Reference to Enemy Blackboard
         bb = GetComponent<EnemyBB>();
+
+        // Reference to Nav Mesh Agent
+        agent = GetComponentInChildren<NavMeshAgent>();
+
+        material = GetComponentInChildren<MeshRenderer>().material;
 
         // Create root selector
         Selector rootChild = new Selector(bb);
@@ -56,6 +65,11 @@ public class EnemyAI : MonoBehaviour
             lookRotation = Quaternion.LookRotation(dir);
             transform.rotation = Quaternion.Slerp(transform.rotation, lookRotation, Time.deltaTime * rotationDamping);
         }
+
+        if (Input.GetKeyDown(KeyCode.Z))
+        {
+            SetColour(new Color(0, 139, 139));
+        }
     }
 
     public void ExecuteBT()
@@ -72,6 +86,11 @@ public class EnemyAI : MonoBehaviour
     public void StopMovement()
     {
         isMoving = false;
+    }
+
+    public void SetColour(Color colour)
+    {
+        material.color = colour;
     }
 }
 
@@ -131,5 +150,111 @@ public class StopMovement : BTNode
     {
         enemyRef.StopMovement();
         return BTStatus.SUCCESS;
+    }
+}
+
+public class CheckInRange : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+
+    public CheckInRange(Blackboard bb, EnemyAI enemy) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+    }
+
+    public override BTStatus Execute()
+    {
+        float distance = Vector3.Distance(eBB.playerLocation, enemyRef.transform.position);
+
+        if (distance <= eBB.range)
+        {
+            return BTStatus.SUCCESS;
+        }
+        else
+        {
+            return BTStatus.FAILURE;
+        }
+    }
+}
+
+public class CheckInCover : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+
+    public CheckInCover(Blackboard bb, EnemyAI enemy) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+    }
+
+    public override BTStatus Execute()
+    {
+        RaycastHit hit;
+        if (Physics.Raycast(enemyRef.transform.position, eBB.playerLocation - enemyRef.transform.position, out hit))
+        {
+            if (hit.collider.transform != eBB.playerTransform)
+            {
+                return BTStatus.SUCCESS;
+            }
+        }
+        return BTStatus.FAILURE;
+    }
+}
+
+// Chases player and returns running until within 0.2f distance, then returns success
+public class ChasePlayer : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private NavMeshAgent agent;
+
+    public ChasePlayer(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        agent = navAgent;
+    }
+
+    public override BTStatus Execute()
+    {
+        float distance = Vector3.Distance(eBB.playerLocation, agent.transform.position);
+        if (distance > 0.2f)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(eBB.playerLocation);
+            enemyRef.SetColour(new Color(0, 139, 139));
+            return BTStatus.RUNNING;
+        }
+        else
+        {
+            agent.isStopped = true;
+            return BTStatus.SUCCESS;
+        }
+    }
+}
+
+// COMPLETE THIS
+public class ShootPlayer : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private NavMeshAgent agent;
+
+    public ShootPlayer(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        agent = navAgent;
+    }
+
+    public override BTStatus Execute()
+    {
+        agent.isStopped = true;
+        // GUN CODE HERE
+        enemyRef.SetColour(new Color(255, 69, 0));
+        return BTStatus.RUNNING;
     }
 }
