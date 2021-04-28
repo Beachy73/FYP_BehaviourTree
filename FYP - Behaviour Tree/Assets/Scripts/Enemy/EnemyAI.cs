@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -24,27 +25,18 @@ public class EnemyAI : MonoBehaviour
     private Quaternion lookRotation;
     [SerializeField] private float rotationDamping = 8f;
 
+    private HealthManager healthManager;
+    [SerializeField] private float healthRestoreRate = 1f;
+
     #endregion
 
 
     // Start is called before the first frame update
     void Start()
     {
-        //////////////////////////////////////////////////////////////////////////
-        //////////////////// Creating Enemy Behaviour Tree ///////////////////////
-        //////////////////////////////////////////////////////////////////////////
-
-        // Reference to Enemy Blackboard
-        bb = GetComponent<EnemyBB>();
-
-        // Reference to Nav Mesh Agent
-        agent = GetComponentInChildren<NavMeshAgent>();
-
-        material = GetComponentInChildren<MeshRenderer>().material;
-
-        // Create root selector
-        Selector rootChild = new Selector(bb);
-        BTRootNode = rootChild;
+        CreateBehaviourTree();
+        
+        
 
         
 
@@ -52,6 +44,8 @@ public class EnemyAI : MonoBehaviour
 
         // Execute behaviour tree every 0.1 seconds
         InvokeRepeating("ExecuteBT", 0.1f, 0.1f);
+
+        healthManager = this.GetComponent<HealthManager>();
     }
 
     // Update is called once per frame
@@ -70,6 +64,48 @@ public class EnemyAI : MonoBehaviour
         {
             SetColour(new Color(0, 139, 139));
         }
+
+        // Health Regeneration
+        healthManager.ChangeHealth(Time.deltaTime * healthRestoreRate);
+    }
+
+    private void CreateBehaviourTree()
+    {
+        //////////////////////////////////////////////////////////////////////////
+        //////////////////// Creating Enemy Behaviour Tree ///////////////////////
+        //////////////////////////////////////////////////////////////////////////
+
+        // Reference to Enemy Blackboard
+        bb = GetComponent<EnemyBB>();
+
+        // Reference to Nav Mesh Agent
+        agent = GetComponentInChildren<NavMeshAgent>();
+
+        material = GetComponentInChildren<MeshRenderer>().material;
+
+        // Create root selector
+        Selector rootChild = new Selector(bb);
+        BTRootNode = rootChild;
+
+        #region Cover Sequence
+        /////////////////////////// Cover Sequence ///////////////////////////////
+        CompositeNode coverSequence = new Sequence(bb);
+        //coverSequence.AddChild(HealthNode);
+        //coverSequence.AddChild(takeCoverSelector);
+
+        CompositeNode takeCoverSelector = new Selector(bb);
+        CheckInCover checkInCover = new CheckInCover(bb, this);
+
+        CompositeNode findCoverSelector = new Selector(bb);
+
+        
+        CompositeNode goToCoverSequence = new Sequence(bb);
+        IsCoverAvailable isCoverAvailable = new IsCoverAvailable(bb, this);
+        GoToCover goToCover = new GoToCover(bb, this, agent);
+        goToCoverSequence.AddChild(isCoverAvailable);
+        goToCoverSequence.AddChild(goToCover);
+
+        #endregion
     }
 
     public void ExecuteBT()
@@ -204,6 +240,127 @@ public class CheckInCover : BTNode
     }
 }
 
+public class IsCoverAvailable : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private Cover[] availableCovers;
+    private Transform target;
+
+    public IsCoverAvailable(Blackboard bb, EnemyAI enemy) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        target = eBB.playerTransform;
+    }
+
+    public override BTStatus Execute()
+    {
+        Transform bestSpot = FindBestCoverSpot();
+        eBB.SetBestCoverSpot(bestSpot);
+        return bestSpot != null ? BTStatus.SUCCESS : BTStatus.FAILURE;
+    }
+
+    private Transform FindBestCoverSpot()
+    {
+        if (eBB.GetBestCoverSpot() != null)
+        {
+            if (CheckIfSpotIsValid(eBB.GetBestCoverSpot()))
+            {
+                return eBB.GetBestCoverSpot();
+            }
+        }
+        
+        float minAngle = 90.0f;
+        Transform bestSpot = null;
+
+        for (int i = 0; i < availableCovers.Length; i++)
+        {
+            Transform bestSpotInCover = FindBestSpotInCover(availableCovers[i], ref minAngle);
+            if (bestSpotInCover != null)
+            {
+                bestSpot = bestSpotInCover;
+            }
+        }
+        return bestSpot;
+    }
+
+    private Transform FindBestSpotInCover(Cover cover, ref float minAngle)
+    {
+        Transform[] availableSpots = cover.GetCoverSpots();
+        Transform bestSpot = null;
+
+        for (int i = 0; i < availableCovers.Length; i++)
+        {
+            Vector3 direction = target.position - availableSpots[i].position;
+            if (CheckIfSpotIsValid(availableSpots[i]))
+            {
+                float angle = Vector3.Angle(availableSpots[i].forward, direction);
+                if (angle < minAngle)
+                {
+                    minAngle = angle;
+                    bestSpot = availableSpots[i];
+                }
+            }
+        }
+        return bestSpot;
+    }
+
+    private bool CheckIfSpotIsValid(Transform spot)
+    {
+        RaycastHit hit;
+        Vector3 direction = target.position - spot.position;
+
+        if (Physics.Raycast(spot.position, direction, out hit))
+        {
+            if (hit.collider.transform != target)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+public class GoToCover : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private NavMeshAgent agent;
+
+    public GoToCover(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        agent = navAgent;
+    }
+
+    public override BTStatus Execute()
+    {
+        Transform coverSpot = eBB.GetBestCoverSpot();
+
+        if (coverSpot == null)
+        {
+            return BTStatus.FAILURE;
+        }
+
+        enemyRef.SetColour(Color.blue);
+        float distance = Vector3.Distance(coverSpot.position, agent.transform.position);
+
+        if (distance > 0.2f)
+        {
+            agent.isStopped = false;
+            agent.SetDestination(coverSpot.position);
+            return BTStatus.RUNNING;
+        }
+        else
+        {
+            agent.isStopped = true;
+            return BTStatus.SUCCESS;
+        }
+    }
+}
+
 // Chases player and returns running until within 0.2f distance, then returns success
 public class ChasePlayer : BTNode
 {
@@ -225,7 +382,7 @@ public class ChasePlayer : BTNode
         {
             agent.isStopped = false;
             agent.SetDestination(eBB.playerLocation);
-            enemyRef.SetColour(new Color(0, 139, 139));
+            enemyRef.SetColour(new Color(46, 139, 87)); // sea green
             return BTStatus.RUNNING;
         }
         else
@@ -254,7 +411,7 @@ public class ShootPlayer : BTNode
     {
         agent.isStopped = true;
         // GUN CODE HERE
-        enemyRef.SetColour(new Color(255, 69, 0));
+        enemyRef.SetColour(new Color(255, 69, 0));  // orange red
         return BTStatus.RUNNING;
     }
 }

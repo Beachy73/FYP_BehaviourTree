@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,6 +11,9 @@ public class EnemyBB : Blackboard
     private HealthManager healthManager;
 
     public float range;
+
+    private Transform bestCoverSpot;
+    [SerializeField] private Cover[] availableCovers;
 
     #endregion
 
@@ -44,5 +48,15 @@ public class EnemyBB : Blackboard
             playerLocation = player.transform.position;
             playerHealth = playerHM.GetCurrentHealth();
         }
+    }
+
+    public void SetBestCoverSpot(Transform bestCoverSpot)
+    {
+        this.bestCoverSpot = bestCoverSpot;
+    }
+
+    public Transform GetBestCoverSpot()
+    {
+        return bestCoverSpot;
     }
 }
