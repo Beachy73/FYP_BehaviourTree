@@ -1,10 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerMovement : MonoBehaviour
 {
     public CharacterController controller;
+
+    private HealthManager healthManager;
 
     private float x;
     private float z;
@@ -16,15 +19,41 @@ public class PlayerMovement : MonoBehaviour
     public float gravity = -9.81f;
     public float jumpHeight = 3f;
 
-    public Transform groundCheck;
-    public float groundDistance = 0.4f;
-    public LayerMask groundMask;
-    
+    //public Transform groundCheck;
+    //public float groundDistance = 0.4f;
+    //public LayerMask groundMask;
+
+    public Camera camera;
+    public float zoomedFoV = 40f;
+    public float normalFoV = 60f;
+    public float cameraLerpRate = 10f;
+
+    private float mouseX;
+    private float mouseY;
+    private float xRotation = 0f;
+
+    public float mouseSensitivity = 400f;
+
+    public Transform playerBody;
+
+    private void Start()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+
+        healthManager = GetComponent<HealthManager>();
+    }
 
     // Update is called once per frame
     void Update()
     {
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        if (healthManager.GetCurrentHealth() <= 0)
+        {
+            camera.transform.parent = null;
+            SceneManager.LoadScene("GameOverScene");
+        }
+        
+        //isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
+        isGrounded = controller.isGrounded;
 
         if (isGrounded && velocity.y < 0)
         {
@@ -46,5 +75,14 @@ public class PlayerMovement : MonoBehaviour
         velocity.y += gravity * Time.deltaTime;
 
         controller.Move(velocity * Time.deltaTime);
+
+        if (Input.GetMouseButton(1))
+        {
+            camera.fieldOfView = Mathf.Lerp(camera.fieldOfView, zoomedFoV, cameraLerpRate * Time.deltaTime);
+        }
+        else
+        {
+            camera.fieldOfView = Mathf.Lerp(camera.fieldOfView, normalFoV, cameraLerpRate * Time.deltaTime);
+        }
     }
 }

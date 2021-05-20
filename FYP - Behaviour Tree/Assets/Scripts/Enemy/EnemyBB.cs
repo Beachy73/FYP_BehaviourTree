@@ -10,10 +10,19 @@ public class EnemyBB : Blackboard
     public Vector3 moveToLocation;
     private HealthManager healthManager;
 
-    public float range;
+    public float chaseRange;
+    public float shootRange;
 
     private Transform bestCoverSpot;
-    [SerializeField] private Cover[] availableCovers;
+    [SerializeField] public Cover[] availableCovers;
+
+    public float highHealthThreshold = 75f;
+    public float lowHealthThreshold = 25f;
+
+    public Transform[] patrolLocations;
+    public int locationNumber;
+    public int lastLocationNumber;
+    public Vector3 nextPatrolLoc;
 
     #endregion
 
@@ -29,15 +38,18 @@ public class EnemyBB : Blackboard
 
 
     // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
         healthManager = this.GetComponent<HealthManager>();
         
         if (player)
         {
+            //playerTransform = player.GetComponentInChildren<PlayerTransform>().transform;
             playerTransform = player.transform;
             playerHM = player.GetComponent<HealthManager>();
         }
+
+        locationNumber = UnityEngine.Random.Range(0, patrolLocations.Length);
     }
 
     // Update is called once per frame
@@ -45,7 +57,8 @@ public class EnemyBB : Blackboard
     {
         if (player)
         {
-            playerLocation = player.transform.position;
+            //playerLocation = player.transform.position;
+            playerLocation = playerTransform.position;
             playerHealth = playerHM.GetCurrentHealth();
         }
     }
@@ -58,5 +71,15 @@ public class EnemyBB : Blackboard
     public Transform GetBestCoverSpot()
     {
         return bestCoverSpot;
+    }
+
+    public void RandomisePatrolPoint()
+    {
+        lastLocationNumber = locationNumber;
+        locationNumber = UnityEngine.Random.Range(0, patrolLocations.Length);
+        //if (locationNumber == lastLocationNumber)
+        //{
+        //    RandomisePatrolPoint();
+        //}
     }
 }

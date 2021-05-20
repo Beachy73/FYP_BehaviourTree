@@ -7,6 +7,7 @@ public class Gun : MonoBehaviour
 
     public Camera fpsCam;
     public ParticleSystem muzzleFlash;
+    //public Transform muzzleLoc;
 
     // Update is called once per frame
     void Update()
@@ -24,7 +25,7 @@ public class Gun : MonoBehaviour
         RaycastHit hit;
         if (Physics.Raycast(fpsCam.transform.position, fpsCam.transform.forward, out hit, range))
         {
-        	Debug.Log(hit.transform.name);
+            Debug.Log(hit.transform.name);
 
             HealthManager target = hit.transform.GetComponent<HealthManager>();
             if (target != null)
@@ -33,6 +34,15 @@ public class Gun : MonoBehaviour
             }
         }
 
-        
+        //if (Physics.Raycast(muzzleLoc.transform.position, muzzleLoc.transform.forward, out hit, range))
+        //{
+        //    Debug.Log(hit.transform.name);
+
+        //    HealthManager target = hit.transform.GetComponent<HealthManager>();
+        //    if (target != null)
+        //    {
+        //        target.ChangeHealth(damage);
+        //    }
+        //}
     }
 }

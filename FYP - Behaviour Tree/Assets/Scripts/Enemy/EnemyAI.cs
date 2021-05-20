@@ -28,6 +28,10 @@ public class EnemyAI : MonoBehaviour
     private HealthManager healthManager;
     [SerializeField] private float healthRestoreRate = 1f;
 
+    public Vector3 currentLocation;
+
+    public GameObject projectile;
+
     #endregion
 
 
@@ -36,12 +40,6 @@ public class EnemyAI : MonoBehaviour
     {
         CreateBehaviourTree();
         
-        
-
-        
-
-
-
         // Execute behaviour tree every 0.1 seconds
         InvokeRepeating("ExecuteBT", 0.1f, 0.1f);
 
@@ -66,7 +64,14 @@ public class EnemyAI : MonoBehaviour
         }
 
         // Health Regeneration
-        healthManager.ChangeHealth(Time.deltaTime * healthRestoreRate);
+        if (GetCurrentHealth() > bb.highHealthThreshold)
+        {
+            healthManager.ChangeHealth(Time.deltaTime * healthRestoreRate);
+        }
+
+        currentLocation = GetComponentInChildren<CapsuleCollider>().transform.position;
+
+        Debug.Log("Available covers length = " + bb.availableCovers.Length);
     }
 
     private void CreateBehaviourTree()
@@ -87,30 +92,75 @@ public class EnemyAI : MonoBehaviour
         Selector rootChild = new Selector(bb);
         BTRootNode = rootChild;
 
-        #region Cover Sequence
-        /////////////////////////// Cover Sequence ///////////////////////////////
-        CompositeNode coverSequence = new Sequence(bb);
-        //coverSequence.AddChild(HealthNode);
-        //coverSequence.AddChild(takeCoverSelector);
+        #region Chase Sequence
 
-        CompositeNode takeCoverSelector = new Selector(bb);
-        CheckInCover checkInCover = new CheckInCover(bb, this);
+        CompositeNode chaseSequence = new Sequence(bb);
+        CheckInRange chaseRange = new CheckInRange(bb, this, bb.chaseRange);
+        ChasePlayer chasePlayer = new ChasePlayer(bb, this, agent);
 
-        CompositeNode findCoverSelector = new Selector(bb);
-
-        
-        CompositeNode goToCoverSequence = new Sequence(bb);
-        IsCoverAvailable isCoverAvailable = new IsCoverAvailable(bb, this);
-        GoToCover goToCover = new GoToCover(bb, this, agent);
-        goToCoverSequence.AddChild(isCoverAvailable);
-        goToCoverSequence.AddChild(goToCover);
+        chaseSequence.AddChild(chaseRange);
+        chaseSequence.AddChild(chasePlayer);
 
         #endregion
+
+        #region Shoot Sequence
+
+        CompositeNode shootSequence = new Sequence(bb);
+        CheckInRange shootRange = new CheckInRange(bb, this, bb.shootRange);
+        ShootPlayer shootPlayer = new ShootPlayer(bb, this, agent);
+
+        shootSequence.AddChild(shootRange);
+        shootSequence.AddChild(shootPlayer);
+
+        #endregion
+
+        #region Cover Sequence
+        /////////////////////////// Cover Sequence ///////////////////////////////
+        
+        HealthNode healthNode = new HealthNode(bb, this, bb.lowHealthThreshold);
+        CheckInCover checkInCoverNode = new CheckInCover(bb, this);
+        IsCoverAvailable isCoverAvailableNode = new IsCoverAvailable(bb, this, bb.availableCovers, bb.playerTransform);
+        GoToCover goToCoverNode = new GoToCover(bb, this, agent);
+
+        CompositeNode goToCoverSequence = new Sequence(bb);
+        goToCoverSequence.AddChild(isCoverAvailableNode);
+        goToCoverSequence.AddChild(goToCoverNode);
+
+        CompositeNode findCoverSelector = new Selector(bb);
+        findCoverSelector.AddChild(goToCoverSequence);
+        findCoverSelector.AddChild(chaseSequence);
+
+        CompositeNode takeCoverSelector = new Selector(bb);
+        takeCoverSelector.AddChild(checkInCoverNode);
+        takeCoverSelector.AddChild(findCoverSelector);
+
+        CompositeNode mainCoverSequence = new Sequence(bb);
+        mainCoverSequence.AddChild(healthNode);
+        mainCoverSequence.AddChild(takeCoverSelector);
+
+        #endregion
+
+        #region Patrol Sequence
+        CompositeNode patrolSequence = new Sequence(bb);
+        GetNextPatrolLocation getNextPatrolLocationNode = new GetNextPatrolLocation(bb, this, agent);
+        GoToPatrolPoint goToPatrolPointNode = new GoToPatrolPoint(bb, this, agent);
+
+        patrolSequence.AddChild(getNextPatrolLocationNode);
+        patrolSequence.AddChild(goToPatrolPointNode);
+        #endregion
+
+        rootChild.AddChild(mainCoverSequence);
+        rootChild.AddChild(shootSequence);
+        rootChild.AddChild(chaseSequence);
+        rootChild.AddChild(patrolSequence);
+
+        //Debug.Log("Created BT");
     }
 
     public void ExecuteBT()
     {
         BTRootNode.Execute();
+        //Debug.Log("Running BT");
     }
 
     public void MoveTo(Vector3 moveLocation)
@@ -127,6 +177,11 @@ public class EnemyAI : MonoBehaviour
     public void SetColour(Color colour)
     {
         material.color = colour;
+    }
+
+    public float GetCurrentHealth()
+    {
+        return healthManager.GetCurrentHealth();
     }
 }
 
@@ -193,23 +248,33 @@ public class CheckInRange : BTNode
 {
     private EnemyBB eBB;
     private EnemyAI enemyRef;
+    private float range;
 
-    public CheckInRange(Blackboard bb, EnemyAI enemy) : base(bb)
+    public CheckInRange(Blackboard bb, EnemyAI enemy, float rangeDistance) : base(bb)
     {
         eBB = (EnemyBB)bb;
         enemyRef = enemy;
+        range = rangeDistance;
     }
 
     public override BTStatus Execute()
     {
-        float distance = Vector3.Distance(eBB.playerLocation, enemyRef.transform.position);
+        float distance = Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation);
 
-        if (distance <= eBB.range)
+        //Debug.Log("Checking if player is in range");
+        //Debug.Log("Distance = " + distance);
+        //Debug.Log("Player location = " + eBB.playerLocation);
+        //Debug.Log("Current enemy location = " + enemyRef.currentLocation);
+        //Debug.Log("Range checking = " + range);
+
+        if (distance <= range)//eBB.range)
         {
+            //Debug.Log("Player is in range");
             return BTStatus.SUCCESS;
         }
         else
         {
+            //Debug.Log("Player is NOT in range");
             return BTStatus.FAILURE;
         }
     }
@@ -229,13 +294,17 @@ public class CheckInCover : BTNode
     public override BTStatus Execute()
     {
         RaycastHit hit;
-        if (Physics.Raycast(enemyRef.transform.position, eBB.playerLocation - enemyRef.transform.position, out hit))
+        Debug.Log("Checking if in cover!");
+        if (Physics.Raycast(enemyRef.currentLocation, eBB.playerLocation - enemyRef.currentLocation, out hit))
         {
+            
             if (hit.collider.transform != eBB.playerTransform)
             {
+                Debug.Log("In cover!");
                 return BTStatus.SUCCESS;
             }
         }
+        Debug.Log("Not in cover");
         return BTStatus.FAILURE;
     }
 }
@@ -247,11 +316,12 @@ public class IsCoverAvailable : BTNode
     private Cover[] availableCovers;
     private Transform target;
 
-    public IsCoverAvailable(Blackboard bb, EnemyAI enemy) : base(bb)
+    public IsCoverAvailable(Blackboard bb, EnemyAI enemy, Cover[] covers, Transform theTarget) : base(bb)
     {
         eBB = (EnemyBB)bb;
         enemyRef = enemy;
-        target = eBB.playerTransform;
+        availableCovers = covers;
+        target = theTarget;
     }
 
     public override BTStatus Execute()
@@ -290,7 +360,9 @@ public class IsCoverAvailable : BTNode
         Transform[] availableSpots = cover.GetCoverSpots();
         Transform bestSpot = null;
 
-        for (int i = 0; i < availableCovers.Length; i++)
+        Debug.Log("Available spots length = " + availableSpots.Length);
+
+        for (int i = 0; i < availableSpots.Length; i++)
         {
             Vector3 direction = target.position - availableSpots[i].position;
             if (CheckIfSpotIsValid(availableSpots[i]))
@@ -341,6 +413,7 @@ public class GoToCover : BTNode
 
         if (coverSpot == null)
         {
+            Debug.Log("Coverspot == null");
             return BTStatus.FAILURE;
         }
 
@@ -349,12 +422,15 @@ public class GoToCover : BTNode
 
         if (distance > 0.2f)
         {
+            Debug.Log("Moving to cover!");
+            Debug.Log("Coverspot Pos = " + coverSpot.position);
             agent.isStopped = false;
             agent.SetDestination(coverSpot.position);
             return BTStatus.RUNNING;
         }
         else
         {
+            Debug.Log("Reached cover!");
             agent.isStopped = true;
             return BTStatus.SUCCESS;
         }
@@ -378,8 +454,13 @@ public class ChasePlayer : BTNode
     public override BTStatus Execute()
     {
         float distance = Vector3.Distance(eBB.playerLocation, agent.transform.position);
-        if (distance > 0.2f)
+        if (distance < eBB.shootRange || distance > eBB.chaseRange)
         {
+            return BTStatus.SUCCESS;
+        }        
+        else if (distance > 0.2f)
+        {
+            Debug.Log("Chasing player!");
             agent.isStopped = false;
             agent.SetDestination(eBB.playerLocation);
             enemyRef.SetColour(new Color(46, 139, 87)); // sea green
@@ -399,6 +480,9 @@ public class ShootPlayer : BTNode
     private EnemyBB eBB;
     private EnemyAI enemyRef;
     private NavMeshAgent agent;
+    private float timer = 0f;
+    private float waitingTime = 0.05f;
+    private bool hasFired = false;
 
     public ShootPlayer(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
     {
@@ -410,8 +494,160 @@ public class ShootPlayer : BTNode
     public override BTStatus Execute()
     {
         agent.isStopped = true;
-        // GUN CODE HERE
         enemyRef.SetColour(new Color(255, 69, 0));  // orange red
+
+        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) > eBB.shootRange)
+        {
+            return BTStatus.SUCCESS;
+        }
+
+        // GUN CODE HERE
+        Debug.Log("Firing");
+        timer += 1f * Time.deltaTime;
+
+        if (!hasFired)
+        {
+            Fire();
+            hasFired = true;
+        }
+
+        if (timer >= waitingTime)
+        {
+            Fire();
+        }
+
+
+
         return BTStatus.RUNNING;
     }
+
+    private void Fire()
+    {
+        MonoBehaviour.Instantiate(enemyRef.projectile, enemyRef.transform, false);
+        timer = 0f;
+        Debug.Log("BANG");
+    }
 }
+
+public class HealthNode : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private float threshold;
+
+    public HealthNode(Blackboard bb, EnemyAI enemy, float healthThreshold) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        threshold = healthThreshold;
+    }
+
+    public override BTStatus Execute()
+    {
+        //Debug.Log("Checking if health is lower than: " + threshold);
+        //Debug.Log("Enemy health = " + enemyRef.GetCurrentHealth());
+
+        if (enemyRef.GetCurrentHealth() <= threshold)
+        {
+            //Debug.Log("Health LOWER than " + threshold);
+            return BTStatus.SUCCESS;
+        }
+        else
+        {
+            //Debug.Log("Health HIGHER than " + threshold);
+            return BTStatus.FAILURE;
+        }
+        //return enemyRef.GetCurrentHealth() <= threshold ? BTStatus.SUCCESS : BTStatus.FAILURE;
+    }
+}
+
+public class GetNextPatrolLocation : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private NavMeshAgent agent;
+
+    public GetNextPatrolLocation(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        agent = navAgent;
+    }
+
+    public override BTStatus Execute()
+    {
+        eBB.RandomisePatrolPoint();
+        eBB.nextPatrolLoc = eBB.patrolLocations[eBB.locationNumber].position;
+        return BTStatus.SUCCESS;
+    }
+}
+
+public class GoToPatrolPoint : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private NavMeshAgent agent;
+
+    public GoToPatrolPoint(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        agent = navAgent;
+    }
+
+    public override BTStatus Execute()
+    {
+        Vector3 patrolSpot = eBB.nextPatrolLoc;
+        agent.SetDestination(eBB.nextPatrolLoc);
+
+        if (patrolSpot == null)
+        {
+            return BTStatus.FAILURE;
+        }
+
+        enemyRef.SetColour(Color.red);
+        float distance = Vector3.Distance(patrolSpot, agent.transform.position);
+
+        Debug.Log("Current location = " + enemyRef.transform.position);
+        Debug.Log("Patrol point location = " + patrolSpot);
+        Debug.Log("Distance = " + distance);
+
+        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) <= eBB.chaseRange || enemyRef.GetCurrentHealth() <= eBB.lowHealthThreshold)
+        {
+            return BTStatus.SUCCESS;
+        }
+        
+        if (distance > 0.2f)
+        {
+            Debug.Log("Patrolling");
+            agent.isStopped = false;
+            agent.SetDestination(patrolSpot);
+            return BTStatus.RUNNING;
+        }
+        else
+        {
+            Debug.Log("Reached patrol point");
+            agent.isStopped = true;
+            return BTStatus.SUCCESS;
+        }
+    }
+}
+
+//public class CheckState : BTNode
+//{
+//    private EnemyBB eBB;
+//    private EnemyAI enemyRef;
+//    private NavMeshAgent agent;
+
+//    public CheckState(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+//    {
+//        eBB = (EnemyBB)bb;
+//        enemyRef = enemy;
+//        agent = navAgent;
+//    }
+
+//    public override BTStatus Execute()
+//    {
+//        throw new NotImplementedException();
+//    }
+//}
