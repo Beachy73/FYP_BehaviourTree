@@ -473,6 +473,8 @@ public class ChasePlayer : BTNode
 
     public override BTStatus Execute()
     {
+        enemyRef.SetColour(new Color(255, 69, 0));  // orange red
+
         float distance = Vector3.Distance(eBB.playerLocation, agent.transform.position);
         if (distance < eBB.shootRange || distance > eBB.chaseRange || enemyRef.GetCurrentHealth() <= eBB.findCoverThreshold)
         {
@@ -483,7 +485,7 @@ public class ChasePlayer : BTNode
             Debug.Log("Chasing player!");
             agent.isStopped = false;
             agent.SetDestination(eBB.playerLocation);
-            enemyRef.SetColour(new Color(46, 139, 87)); // sea green
+            //enemyRef.SetColour(new Color(46, 139, 87)); // sea green
             return BTStatus.RUNNING;
         }
         else
