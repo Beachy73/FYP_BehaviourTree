@@ -16,13 +16,16 @@ public class EnemyBB : Blackboard
     private Transform bestCoverSpot;
     [SerializeField] public Cover[] availableCovers;
 
-    public float highHealthThreshold = 75f;
-    public float lowHealthThreshold = 25f;
+    public float healthRegenThreshold = 60f;
+    public float findHealthThreshold = 40f;
+    public float findCoverThreshold = 20f;
 
     public Transform[] patrolLocations;
     public int locationNumber;
     public int lastLocationNumber;
     public Vector3 nextPatrolLoc;
+
+    public HealthPack closestHealthPack;
 
     #endregion
 

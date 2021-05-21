@@ -9,6 +9,13 @@ public class Gun : MonoBehaviour
     public ParticleSystem muzzleFlash;
     //public Transform muzzleLoc;
 
+    private AudioSource soundEffect;
+
+    private void Awake()
+    {
+        soundEffect = GetComponentInChildren<AudioSource>();
+    }
+
     // Update is called once per frame
     void Update()
     {
@@ -21,6 +28,7 @@ public class Gun : MonoBehaviour
     private void Shoot()
     {
         muzzleFlash.Play();
+        soundEffect.Play();
         
         RaycastHit hit;
         if (Physics.Raycast(fpsCam.transform.position, fpsCam.transform.forward, out hit, range))

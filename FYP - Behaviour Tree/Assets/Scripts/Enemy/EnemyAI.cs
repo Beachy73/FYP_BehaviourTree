@@ -32,6 +32,8 @@ public class EnemyAI : MonoBehaviour
 
     public GameObject projectile;
 
+    public AudioSource source;
+
     #endregion
 
 
@@ -44,6 +46,7 @@ public class EnemyAI : MonoBehaviour
         InvokeRepeating("ExecuteBT", 0.1f, 0.1f);
 
         healthManager = this.GetComponent<HealthManager>();
+        source = this.GetComponentInChildren<AudioSource>();
     }
 
     // Update is called once per frame
@@ -64,14 +67,18 @@ public class EnemyAI : MonoBehaviour
         }
 
         // Health Regeneration
-        if (GetCurrentHealth() > bb.highHealthThreshold)
+        if (GetCurrentHealth() > bb.healthRegenThreshold)
         {
             healthManager.ChangeHealth(Time.deltaTime * healthRestoreRate);
+        }
+        else if (GetCurrentHealth() <= 0)
+        {
+            Destroy(gameObject);
         }
 
         currentLocation = GetComponentInChildren<CapsuleCollider>().transform.position;
 
-        Debug.Log("Available covers length = " + bb.availableCovers.Length);
+        //Debug.Log("Available covers length = " + bb.availableCovers.Length);
     }
 
     private void CreateBehaviourTree()
@@ -114,10 +121,22 @@ public class EnemyAI : MonoBehaviour
 
         #endregion
 
+        #region Get Health Sequence
+        CompositeNode getHealthSequence = new Sequence(bb);
+
+        HealthNode getHealthCheckNode = new HealthNode(bb, this, bb.findHealthThreshold);
+        GetClosestHealthPack getClosestHealthPackNode = new GetClosestHealthPack(bb, this);
+        PickupHealthPack pickupHealthPackNode = new PickupHealthPack(bb, this, agent);
+
+        getHealthSequence.AddChild(getHealthCheckNode);
+        getHealthSequence.AddChild(getClosestHealthPackNode);
+        getHealthSequence.AddChild(pickupHealthPackNode);
+        #endregion
+
         #region Cover Sequence
         /////////////////////////// Cover Sequence ///////////////////////////////
-        
-        HealthNode healthNode = new HealthNode(bb, this, bb.lowHealthThreshold);
+
+        HealthNode coverHealthNode = new HealthNode(bb, this, bb.findCoverThreshold);
         CheckInCover checkInCoverNode = new CheckInCover(bb, this);
         IsCoverAvailable isCoverAvailableNode = new IsCoverAvailable(bb, this, bb.availableCovers, bb.playerTransform);
         GoToCover goToCoverNode = new GoToCover(bb, this, agent);
@@ -135,7 +154,7 @@ public class EnemyAI : MonoBehaviour
         takeCoverSelector.AddChild(findCoverSelector);
 
         CompositeNode mainCoverSequence = new Sequence(bb);
-        mainCoverSequence.AddChild(healthNode);
+        mainCoverSequence.AddChild(coverHealthNode);
         mainCoverSequence.AddChild(takeCoverSelector);
 
         #endregion
@@ -151,6 +170,7 @@ public class EnemyAI : MonoBehaviour
 
         rootChild.AddChild(mainCoverSequence);
         rootChild.AddChild(shootSequence);
+        rootChild.AddChild(getHealthSequence);
         rootChild.AddChild(chaseSequence);
         rootChild.AddChild(patrolSequence);
 
@@ -186,63 +206,63 @@ public class EnemyAI : MonoBehaviour
 }
 
 
-public class MoveTo : BTNode
-{
-    private EnemyBB eBB;
-    private EnemyAI enemyRef;
+//public class MoveTo : BTNode
+//{
+//    private EnemyBB eBB;
+//    private EnemyAI enemyRef;
 
-    public MoveTo(EnemyBB bb, EnemyAI enemy) : base(bb)
-    {
-        eBB = (EnemyBB)bb;
-        enemyRef = enemy;
-    }
+//    public MoveTo(EnemyBB bb, EnemyAI enemy) : base(bb)
+//    {
+//        eBB = (EnemyBB)bb;
+//        enemyRef = enemy;
+//    }
 
-    public override BTStatus Execute()
-    {
-        enemyRef.MoveTo(eBB.moveToLocation);
-        return BTStatus.SUCCESS;
-    }
-}
+//    public override BTStatus Execute()
+//    {
+//        enemyRef.MoveTo(eBB.moveToLocation);
+//        return BTStatus.SUCCESS;
+//    }
+//}
 
-public class WaitTillAtLocation : BTNode
-{
-    private EnemyBB eBB;
-    private EnemyAI enemyRef;
+//public class WaitTillAtLocation : BTNode
+//{
+//    private EnemyBB eBB;
+//    private EnemyAI enemyRef;
 
-    public WaitTillAtLocation(Blackboard bb, EnemyAI enemy) : base(bb)
-    {
-        eBB = (EnemyBB)bb;
-        enemyRef = enemy;
-    }
+//    public WaitTillAtLocation(Blackboard bb, EnemyAI enemy) : base(bb)
+//    {
+//        eBB = (EnemyBB)bb;
+//        enemyRef = enemy;
+//    }
 
-    public override BTStatus Execute()
-    {
-        BTStatus currentStatus = BTStatus.RUNNING;
+//    public override BTStatus Execute()
+//    {
+//        BTStatus currentStatus = BTStatus.RUNNING;
 
-        if (Vector3.Distance(enemyRef.transform.position, eBB.moveToLocation) <= 1.0f)
-        {
-            currentStatus = BTStatus.SUCCESS;
-        }
+//        if (Vector3.Distance(enemyRef.transform.position, eBB.moveToLocation) <= 1.0f)
+//        {
+//            currentStatus = BTStatus.SUCCESS;
+//        }
 
-        return currentStatus;
-    }
-}
+//        return currentStatus;
+//    }
+//}
 
-public class StopMovement : BTNode
-{
-    private EnemyAI enemyRef;
+//public class StopMovement : BTNode
+//{
+//    private EnemyAI enemyRef;
 
-    public StopMovement(Blackboard bb, EnemyAI enemy) : base(bb)
-    {
-        enemyRef = enemy;
-    }
+//    public StopMovement(Blackboard bb, EnemyAI enemy) : base(bb)
+//    {
+//        enemyRef = enemy;
+//    }
 
-    public override BTStatus Execute()
-    {
-        enemyRef.StopMovement();
-        return BTStatus.SUCCESS;
-    }
-}
+//    public override BTStatus Execute()
+//    {
+//        enemyRef.StopMovement();
+//        return BTStatus.SUCCESS;
+//    }
+//}
 
 public class CheckInRange : BTNode
 {
@@ -454,7 +474,7 @@ public class ChasePlayer : BTNode
     public override BTStatus Execute()
     {
         float distance = Vector3.Distance(eBB.playerLocation, agent.transform.position);
-        if (distance < eBB.shootRange || distance > eBB.chaseRange)
+        if (distance < eBB.shootRange || distance > eBB.chaseRange || enemyRef.GetCurrentHealth() <= eBB.findCoverThreshold)
         {
             return BTStatus.SUCCESS;
         }        
@@ -494,12 +514,14 @@ public class ShootPlayer : BTNode
     public override BTStatus Execute()
     {
         agent.isStopped = true;
+        enemyRef.transform.LookAt(eBB.playerLocation, enemyRef.transform.up);
         enemyRef.SetColour(new Color(255, 69, 0));  // orange red
 
-        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) > eBB.shootRange)
+        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) > eBB.shootRange || enemyRef.GetCurrentHealth() <= eBB.findCoverThreshold)
         {
             return BTStatus.SUCCESS;
         }
+
 
         // GUN CODE HERE
         Debug.Log("Firing");
@@ -515,9 +537,7 @@ public class ShootPlayer : BTNode
         {
             Fire();
         }
-
-
-
+        
         return BTStatus.RUNNING;
     }
 
@@ -525,6 +545,7 @@ public class ShootPlayer : BTNode
     {
         MonoBehaviour.Instantiate(enemyRef.projectile, enemyRef.transform, false);
         timer = 0f;
+        enemyRef.source.Play();
         Debug.Log("BANG");
     }
 }
@@ -612,7 +633,7 @@ public class GoToPatrolPoint : BTNode
         Debug.Log("Patrol point location = " + patrolSpot);
         Debug.Log("Distance = " + distance);
 
-        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) <= eBB.chaseRange || enemyRef.GetCurrentHealth() <= eBB.lowHealthThreshold)
+        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) <= eBB.chaseRange || enemyRef.GetCurrentHealth() <= eBB.findHealthThreshold)
         {
             return BTStatus.SUCCESS;
         }
@@ -633,21 +654,111 @@ public class GoToPatrolPoint : BTNode
     }
 }
 
-//public class CheckState : BTNode
-//{
-//    private EnemyBB eBB;
-//    private EnemyAI enemyRef;
-//    private NavMeshAgent agent;
+public class GetClosestHealthPack : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
 
-//    public CheckState(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
-//    {
-//        eBB = (EnemyBB)bb;
-//        enemyRef = enemy;
-//        agent = navAgent;
-//    }
+    private List<HealthPack> healthPacks;
 
-//    public override BTStatus Execute()
-//    {
-//        throw new NotImplementedException();
-//    }
-//}
+    public GetClosestHealthPack(Blackboard bb, EnemyAI enemy) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+    }
+
+    public override BTStatus Execute()
+    {
+        Debug.Log("Getting health pack location");
+        
+        healthPacks = new List<HealthPack>();
+        HealthPack closestPack = null;
+        float distance = Mathf.Infinity;
+        Vector3 pos = enemyRef.transform.position;
+
+        foreach (HealthPack hp in GameObject.FindObjectsOfType<HealthPack>())
+        {
+            healthPacks.Add(hp);
+        }
+
+        foreach (HealthPack hp in healthPacks)
+        {
+            Vector3 diff = hp.transform.position - pos;
+            float curDistance = diff.sqrMagnitude;
+
+            if (curDistance < distance)
+            {
+                closestPack = hp;
+                distance = curDistance;
+            }
+        }
+
+        eBB.closestHealthPack = closestPack;
+
+        if (eBB.closestHealthPack != null)
+        {
+            return BTStatus.SUCCESS;
+        }
+        else
+        {
+            return BTStatus.FAILURE;
+        }
+    }
+}
+
+public class PickupHealthPack : BTNode
+{
+    private EnemyBB eBB;
+    private EnemyAI enemyRef;
+    private NavMeshAgent agent;
+
+    public PickupHealthPack(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
+    {
+        eBB = (EnemyBB)bb;
+        enemyRef = enemy;
+        agent = navAgent;
+    }
+
+    public override BTStatus Execute()
+    {
+        if (eBB.closestHealthPack == null)
+        {
+            return BTStatus.FAILURE;
+        }
+
+        Vector3 healthLoc = eBB.closestHealthPack.transform.position;
+
+        if (healthLoc == null)
+        {
+            return BTStatus.FAILURE;
+        }
+
+        agent.SetDestination(healthLoc);
+
+        enemyRef.SetColour(Color.cyan);
+        float distance = Vector3.Distance(healthLoc, agent.transform.position);
+
+        Debug.Log("Current location = " + enemyRef.transform.position);
+        Debug.Log("Health Pack = " + healthLoc);
+        Debug.Log("Distance = " + distance);
+
+        if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) <= eBB.shootRange || enemyRef.GetCurrentHealth() <= eBB.findCoverThreshold)
+        {
+            return BTStatus.SUCCESS;
+        }
+
+        if (distance > 0.2f)
+        {
+            Debug.Log("Getting health pack!");
+            agent.isStopped = false;
+            agent.SetDestination(healthLoc);
+            return BTStatus.RUNNING;
+        }
+        else
+        {
+            Debug.Log("Picked up health pack");
+            agent.isStopped = true;
+            return BTStatus.SUCCESS;
+        }
+    }
+}
