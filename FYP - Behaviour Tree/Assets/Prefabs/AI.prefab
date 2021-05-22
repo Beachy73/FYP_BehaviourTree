@@ -412,7 +412,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveToLocation: {x: 0, y: 0, z: 0}
   chaseRange: 30
-  shootRange: 15
+  shootRange: 20
   availableCovers:
   - {fileID: 0}
   - {fileID: 0}
