@@ -36,11 +36,14 @@ public class PlayerController : MonoBehaviour
 
     public Transform playerBody;
 
+    public HealthBar healthBar;
+
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
 
         healthManager = GetComponent<HealthManager>();
+        healthBar.SetHealth(healthManager.maxHealth);
     }
 
     // Update is called once per frame
@@ -84,5 +87,7 @@ public class PlayerController : MonoBehaviour
         {
             camera.fieldOfView = Mathf.Lerp(camera.fieldOfView, normalFoV, cameraLerpRate * Time.deltaTime);
         }
+
+        healthBar.SetHealth(healthManager.GetCurrentHealth());
     }
 }

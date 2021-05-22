@@ -529,17 +529,26 @@ public class ShootPlayer : BTNode
         Debug.Log("Firing");
         timer += 1f * Time.deltaTime;
 
-        if (!hasFired)
+        
+
+        RaycastHit hit;
+        if (Physics.Raycast(enemyRef.currentLocation, eBB.playerLocation - enemyRef.currentLocation, out hit))
         {
-            Fire();
-            hasFired = true;
+            if (hit.collider.transform == eBB.playerTransform)
+            {
+                if (!hasFired)
+                {
+                    Fire();
+                    hasFired = true;
+                }
+
+                if (timer >= waitingTime)
+                {
+                    Fire();
+                }
+            }
         }
 
-        if (timer >= waitingTime)
-        {
-            Fire();
-        }
-        
         return BTStatus.RUNNING;
     }
 
