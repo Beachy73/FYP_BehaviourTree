@@ -411,8 +411,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveToLocation: {x: 0, y: 0, z: 0}
-  chaseRange: 30
-  shootRange: 20
+  chaseRange: 35
+  shootRange: 25
   availableCovers:
   - {fileID: 0}
   - {fileID: 0}
@@ -493,7 +493,6 @@ MonoBehaviour:
   projectile: {fileID: 2579031605850282132, guid: c4050549d0845f44da841cb5c0d1aad9,
     type: 3}
   source: {fileID: 0}
-  levelManager: {fileID: 0}
 --- !u!195 &4618080783264681850
 NavMeshAgent:
   m_ObjectHideFlags: 0
