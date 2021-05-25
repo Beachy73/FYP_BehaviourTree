@@ -298,7 +298,7 @@ GameObject:
   - component: {fileID: 4618080783264681850}
   m_Layer: 0
   m_Name: AI
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -493,6 +493,7 @@ MonoBehaviour:
   projectile: {fileID: 2579031605850282132, guid: c4050549d0845f44da841cb5c0d1aad9,
     type: 3}
   source: {fileID: 0}
+  levelManager: {fileID: 0}
 --- !u!195 &4618080783264681850
 NavMeshAgent:
   m_ObjectHideFlags: 0

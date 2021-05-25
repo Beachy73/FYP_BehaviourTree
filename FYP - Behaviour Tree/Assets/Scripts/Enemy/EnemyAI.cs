@@ -73,6 +73,7 @@ public class EnemyAI : MonoBehaviour
         }
         else if (GetCurrentHealth() <= 0)
         {
+            agent.isStopped = true;
             Destroy(gameObject);
         }
 
@@ -314,17 +315,17 @@ public class CheckInCover : BTNode
     public override BTStatus Execute()
     {
         RaycastHit hit;
-        Debug.Log("Checking if in cover!");
+        //Debug.Log("Checking if in cover!");
         if (Physics.Raycast(enemyRef.currentLocation, eBB.playerLocation - enemyRef.currentLocation, out hit))
         {
             
             if (hit.collider.transform != eBB.playerTransform)
             {
-                Debug.Log("In cover!");
+                //Debug.Log("In cover!");
                 return BTStatus.SUCCESS;
             }
         }
-        Debug.Log("Not in cover");
+        //Debug.Log("Not in cover");
         return BTStatus.FAILURE;
     }
 }
@@ -380,7 +381,7 @@ public class IsCoverAvailable : BTNode
         Transform[] availableSpots = cover.GetCoverSpots();
         Transform bestSpot = null;
 
-        Debug.Log("Available spots length = " + availableSpots.Length);
+        //Debug.Log("Available spots length = " + availableSpots.Length);
 
         for (int i = 0; i < availableSpots.Length; i++)
         {
@@ -433,7 +434,7 @@ public class GoToCover : BTNode
 
         if (coverSpot == null)
         {
-            Debug.Log("Coverspot == null");
+            //Debug.Log("Coverspot == null");
             return BTStatus.FAILURE;
         }
 
@@ -442,15 +443,15 @@ public class GoToCover : BTNode
 
         if (distance > 0.2f)
         {
-            Debug.Log("Moving to cover!");
-            Debug.Log("Coverspot Pos = " + coverSpot.position);
+            //Debug.Log("Moving to cover!");
+            //Debug.Log("Coverspot Pos = " + coverSpot.position);
             agent.isStopped = false;
             agent.SetDestination(coverSpot.position);
             return BTStatus.RUNNING;
         }
         else
         {
-            Debug.Log("Reached cover!");
+            //Debug.Log("Reached cover!");
             agent.isStopped = true;
             return BTStatus.SUCCESS;
         }
@@ -482,7 +483,7 @@ public class ChasePlayer : BTNode
         }        
         else if (distance > 0.2f)
         {
-            Debug.Log("Chasing player!");
+            //Debug.Log("Chasing player!");
             agent.isStopped = false;
             agent.SetDestination(eBB.playerLocation);
             //enemyRef.SetColour(new Color(46, 139, 87)); // sea green
@@ -526,7 +527,7 @@ public class ShootPlayer : BTNode
 
 
         // GUN CODE HERE
-        Debug.Log("Firing");
+        //Debug.Log("Firing");
         timer += 1f * Time.deltaTime;
 
         
@@ -557,7 +558,7 @@ public class ShootPlayer : BTNode
         MonoBehaviour.Instantiate(enemyRef.projectile, enemyRef.transform, false);
         timer = 0f;
         enemyRef.source.Play();
-        Debug.Log("BANG");
+        //Debug.Log("BANG");
     }
 }
 
@@ -640,9 +641,9 @@ public class GoToPatrolPoint : BTNode
         enemyRef.SetColour(Color.red);
         float distance = Vector3.Distance(patrolSpot, agent.transform.position);
 
-        Debug.Log("Current location = " + enemyRef.transform.position);
-        Debug.Log("Patrol point location = " + patrolSpot);
-        Debug.Log("Distance = " + distance);
+        //Debug.Log("Current location = " + enemyRef.transform.position);
+        //Debug.Log("Patrol point location = " + patrolSpot);
+        //Debug.Log("Distance = " + distance);
 
         if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) <= eBB.chaseRange || enemyRef.GetCurrentHealth() <= eBB.findHealthThreshold)
         {
@@ -651,14 +652,14 @@ public class GoToPatrolPoint : BTNode
         
         if (distance > 0.2f)
         {
-            Debug.Log("Patrolling");
+            //Debug.Log("Patrolling");
             agent.isStopped = false;
             agent.SetDestination(patrolSpot);
             return BTStatus.RUNNING;
         }
         else
         {
-            Debug.Log("Reached patrol point");
+            //Debug.Log("Reached patrol point");
             agent.isStopped = true;
             return BTStatus.SUCCESS;
         }
@@ -749,9 +750,9 @@ public class PickupHealthPack : BTNode
         enemyRef.SetColour(Color.cyan);
         float distance = Vector3.Distance(healthLoc, agent.transform.position);
 
-        Debug.Log("Current location = " + enemyRef.transform.position);
-        Debug.Log("Health Pack = " + healthLoc);
-        Debug.Log("Distance = " + distance);
+        //Debug.Log("Current location = " + enemyRef.transform.position);
+        //Debug.Log("Health Pack = " + healthLoc);
+        //Debug.Log("Distance = " + distance);
 
         if (Vector3.Distance(eBB.playerLocation, enemyRef.currentLocation) <= eBB.shootRange || enemyRef.GetCurrentHealth() <= eBB.findCoverThreshold)
         {
@@ -760,14 +761,14 @@ public class PickupHealthPack : BTNode
 
         if (distance > 0.2f)
         {
-            Debug.Log("Getting health pack!");
+            //Debug.Log("Getting health pack!");
             agent.isStopped = false;
             agent.SetDestination(healthLoc);
             return BTStatus.RUNNING;
         }
         else
         {
-            Debug.Log("Picked up health pack");
+            //Debug.Log("Picked up health pack");
             agent.isStopped = true;
             return BTStatus.SUCCESS;
         }
