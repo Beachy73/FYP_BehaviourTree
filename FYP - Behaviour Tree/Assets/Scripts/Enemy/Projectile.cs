@@ -28,6 +28,11 @@ public class Projectile : MonoBehaviour
     {
         transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);
 
+        if (Vector3.Distance(transform.position, spawnLoc) > 1f)
+        {
+            this.transform.parent = null;
+        }
+
         if (Vector3.Distance(transform.position, target) < 0.2f || Vector3.Distance(transform.position, spawnLoc) > 20f)
         {
             DestroyProjectile();
