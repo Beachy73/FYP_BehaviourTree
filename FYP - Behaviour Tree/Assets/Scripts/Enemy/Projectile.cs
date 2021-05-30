@@ -33,7 +33,7 @@ public class Projectile : MonoBehaviour
             this.transform.parent = null;
         }
 
-        if (Vector3.Distance(transform.position, target) < 0.2f || Vector3.Distance(transform.position, spawnLoc) > 20f)
+        if (Vector3.Distance(transform.position, target) < 0.2f || Vector3.Distance(transform.position, spawnLoc) > 35f)
         {
             DestroyProjectile();
         }

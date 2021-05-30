@@ -38,6 +38,8 @@ public class PlayerController : MonoBehaviour
 
     public HealthBar healthBar;
 
+    private bool godModeActive;
+
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
@@ -89,5 +91,22 @@ public class PlayerController : MonoBehaviour
         }
 
         healthBar.SetHealth(healthManager.GetCurrentHealth());
+
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            if (godModeActive)
+            {
+                godModeActive = false;
+            }
+            else
+            {
+                godModeActive = true;
+            }
+        }
+
+        if (godModeActive)
+        {
+            healthManager.ChangeHealth(10f);
+        }
     }
 }

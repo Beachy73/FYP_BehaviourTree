@@ -43,7 +43,7 @@ public class EnemyAI : MonoBehaviour
         CreateBehaviourTree();
         
         // Execute behaviour tree every 0.1 seconds
-        InvokeRepeating("ExecuteBT", 0.1f, 0.1f);
+        InvokeRepeating("ExecuteBT", 0.05f, 0.05f);
 
         healthManager = this.GetComponent<HealthManager>();
         source = this.GetComponentInChildren<AudioSource>();
@@ -504,7 +504,7 @@ public class ShootPlayer : BTNode
     private EnemyAI enemyRef;
     private NavMeshAgent agent;
     private float timer = 0f;
-    private float waitingTime = 0.05f;
+    private float waitingTime = 0.03f;
     private bool hasFired = false;
 
     public ShootPlayer(Blackboard bb, EnemyAI enemy, NavMeshAgent navAgent) : base(bb)
